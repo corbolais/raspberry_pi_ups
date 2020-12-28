@@ -33,6 +33,14 @@ class Powerpi:
     #BYTE_VREG = 0b10001110 #4.4V
     #BYTE_VREG = 0b10101010 #4.512V
     #BYTE_VREG = 0b11000010 #4.608V
+
+    MQTT_ENABLED = True
+    MQTT_HOSTNAME = ""
+    MQTT_PORT = 1833
+    MQTT_USERNAME = "mqtt"
+    MQTT_PASSWORD = "mqttPassword"
+    MQTT_CLIENTID = "powerpi"
+    MQTT_BASETOPIC = "powerpi"
     ###############################################
 
     REG_ICHG = 0x04 

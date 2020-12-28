@@ -6,6 +6,7 @@ import logging
 import socket
 import json
 import signal
+import paho.mqtt.client as mqtt
 from powerpi import Powerpi
 
 logging.basicConfig(level=logging.INFO)
@@ -23,6 +24,17 @@ serverAddressPort   = ("127.0.0.1", UDP_PORT)
 UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 disconnectflag = False
 ppi = Powerpi()
+client = None
+
+if ppi.MQTT_ENABLED:
+    def on_connect(client, userdata, flags, rc):
+        os.system("Connected with result code "+str(rc))
+    
+    mqtt.Client(ppi.MQTT_CLIENTID, clean_session=True)
+    client.username_pw_set(username=ppi.MQTT_USERNAME, password=ppi.MQTT_PASSWORD)
+    client.on_connect = on_connect
+    client.connect(ppi.MQTT_HOSTNAME, ppi.MQTT_PORT, 60)
+
 
 def read_status(clear_fault=False):
         global disconnectflag, ENABLE_UDP
@@ -45,6 +57,12 @@ def read_status(clear_fault=False):
         if ENABLE_UDP:
             try:
                 UDPClientSocket.sendto(json.dumps(status,indent=4,sort_keys=True), serverAddressPort)
+            except Exception as ex:
+                logging.error(ex)
+
+        if client != None:
+            try:
+                client.publish(ppi.MQTT_BASETOPIC + "/status", payload=json.dumps(status,indent=4,sort_keys=True), qos=0, retain=False)
             except Exception as ex:
                 logging.error(ex)
         
