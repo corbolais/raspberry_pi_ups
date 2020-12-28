@@ -24,8 +24,11 @@ UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 disconnectflag = False
 ppi = Powerpi()
 
+TIMEOUT = 100 #timeout to shutdown in seconds
+counter = 0
+
 def read_status(clear_fault=False):
-        global disconnectflag, ENABLE_UDP
+        global disconnectflag, ENABLE_UDP, counter, TIMEOUT
         err, status = ppi.read_status(clear_fault)
         
         if err:
@@ -34,13 +37,14 @@ def read_status(clear_fault=False):
 
         if status["PowerInputStatus"] == "Not Connected" and disconnectflag == False :
             disconnectflag = True
-            message = "echo Power Disconnected, system will shutdown in %d minutes! | wall -n " % (status['TimeRemaining'])
+            message = "echo Power Disconnected, system will shutdown in %d minutes! | wall" % (status['TimeRemaining'])
             os.system(message)
         
         if status["PowerInputStatus"] == "Connected" and disconnectflag == True :
             disconnectflag = False
-            message = "echo Power Restored, battery at %d percent | wall -n " % (status['BatteryPercentage'])
+            message = "echo Power Restored, battery at %d percent | wall" % (status['BatteryPercentage'])
             os.system(message)
+            counter = 0
         
         if ENABLE_UDP:
             try:
@@ -53,6 +57,12 @@ def read_status(clear_fault=False):
         if(status['BatteryVoltage'] < ppi.VBAT_LOW):
                 ppi.bat_disconnect()
                 os.system('sudo shutdown now')
+        
+        if disconnectflag:
+            if counter > TIMEOUT:
+                ppi.bat_disconnect()
+                os.system('sudo shutdown now')
+            counter = counter +2
 
 def interrupt_handler(channel):
     read_status(True) 
