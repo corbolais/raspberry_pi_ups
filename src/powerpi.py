@@ -35,8 +35,8 @@ class Powerpi:
     #BYTE_VREG = 0b11000010 #4.608V
 
     MQTT_ENABLED = True
-    MQTT_HOSTNAME = ""
-    MQTT_PORT = 1833
+    MQTT_HOSTNAME = "mqtt.broker.host"
+    MQTT_PORT = 1883
     MQTT_USERNAME = "mqtt"
     MQTT_PASSWORD = "mqttPassword"
     MQTT_CLIENTID = "powerpi"

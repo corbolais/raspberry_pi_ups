@@ -6,7 +6,6 @@ import logging
 import socket
 import json
 import signal
-import paho.mqtt.client as mqtt
 from powerpi import Powerpi
 
 logging.basicConfig(level=logging.INFO)
@@ -27,14 +26,31 @@ ppi = Powerpi()
 client = None
 
 if ppi.MQTT_ENABLED:
-    def on_connect(client, userdata, flags, rc):
-        os.system("Connected with result code "+str(rc))
+    import paho.mqtt.client as mqtt
+    def on_MQTTconnect(client, userdata, flags, rc):
+        if rc == 0:
+            logging.info("MQTT Connection successful")
+        elif rc == 1:
+            logging.info("MQTT Connection refused - incorrect protocol version")
+        elif rc == 2: 
+            logging.info("MQTT Connection refused - invalid client identifier")
+        elif rc == 3: 
+            logging.info("MQTT Connection refused - server unavailable")
+        elif rc == 4: 
+            logging.info("MQTT Connection refused - bad username or password")
+        elif rc == 5:
+            logging.info("MQTT Connection refused - not authorised")
+        else:
+            logging.info("MQTT connected with unknown result code " + str(rc))
     
-    mqtt.Client(ppi.MQTT_CLIENTID, clean_session=True)
-    client.username_pw_set(username=ppi.MQTT_USERNAME, password=ppi.MQTT_PASSWORD)
-    client.on_connect = on_connect
-    client.connect(ppi.MQTT_HOSTNAME, ppi.MQTT_PORT, 60)
+    def on_disconnect(client, userdata, rc):
+        logging.error("MQTT disconnected wuth result code " + str(rc))
 
+    client = mqtt.Client(ppi.MQTT_CLIENTID, clean_session=True)
+
+    client.username_pw_set(username=ppi.MQTT_USERNAME, password=ppi.MQTT_PASSWORD)
+    client.on_connect = on_MQTTconnect
+    client.connect(ppi.MQTT_HOSTNAME, ppi.MQTT_PORT, 60)
 
 def read_status(clear_fault=False):
         global disconnectflag, ENABLE_UDP
@@ -63,6 +79,8 @@ def read_status(clear_fault=False):
         if client != None:
             try:
                 client.publish(ppi.MQTT_BASETOPIC + "/status", payload=json.dumps(status,indent=4,sort_keys=True), qos=0, retain=False)
+                for key, value in status.items():
+                    client.publish(ppi.MQTT_BASETOPIC + "/status/" + key, payload=value, qos=0, retain=False)
             except Exception as ex:
                 logging.error(ex)
         

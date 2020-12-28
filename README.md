@@ -79,6 +79,20 @@ sudo apt-get install -y python-smbus
 
 For more information, checkout the [link](https://learn.adafruit.com/adafruits-raspberry-pi-lesson-4-gpio-setup/configuring-i2c)
 
+#### (Optional) install paho-mqtt if you plan to use MQTT
+
+Install pip for python 2.7 (if not installed)
+
+```shell
+sudo apt-get install python-pip
+```
+
+Install paho-mqtt
+
+```shell
+pip install paho-mqtt
+```
+
 ### 3. Install the ups service
 
 Clone the Power Pi repository:
@@ -88,6 +102,8 @@ cd ~
 git clone https://github.com/tjohn327/raspberry_pi_ups.git
 cd raspberry_pi_ups/src/
 ```
+
+Edit the file powerpi.py between lines 37 and 43 and setup MQTT-Parameters for your MQTT broker or disable MQTT.
 
 Edit the file powerpi.py between lines 16 and 24 if you are not using Samsung INR18650-29E battery. It is recommended to keep the VBAT_LOW at 3.2V for Li-Ion batteries.
 
