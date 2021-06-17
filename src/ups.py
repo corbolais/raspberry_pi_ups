@@ -23,11 +23,18 @@ serverAddressPort   = ("127.0.0.1", UDP_PORT)
 UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 disconnectflag = False
 ppi = Powerpi()
+reportRound = 0
 client = None
 
 if ppi.MQTT_ENABLED:
     import paho.mqtt.client as mqtt
     def on_MQTTconnect(client, userdata, flags, rc):
+        reasoning(rc, "connected")
+
+    def on_MQTTdisconnect(client, userdata, rc):
+        reasoning(rc, "disconnected")
+
+    def reasoning(rc, action="unknown action"):
         if rc == 0:
             logging.info("MQTT Connection successful")
         elif rc == 1:
@@ -39,26 +46,31 @@ if ppi.MQTT_ENABLED:
         elif rc == 4: 
             logging.info("MQTT Connection refused - bad username or password")
         elif rc == 5:
-            logging.info("MQTT Connection refused - not authorised")
+            logging.info("MQTT Connection refused - not authorized")
         else:
-            logging.info("MQTT connected with unknown result code " + str(rc))
+            logging.info("MQTT " + action + " with unknown result code " + str(rc))
     
-    def on_disconnect(client, userdata, rc):
-        logging.error("MQTT disconnected wuth result code " + str(rc))
-
     client = mqtt.Client(ppi.MQTT_CLIENTID, clean_session=True)
 
     client.username_pw_set(username=ppi.MQTT_USERNAME, password=ppi.MQTT_PASSWORD)
     client.on_connect = on_MQTTconnect
-    client.connect(ppi.MQTT_HOSTNAME, ppi.MQTT_PORT, 60)
+    client.on_MQTTdisconnect = on_MQTTdisconnect
+    client.reconnect_delay_set(1, 120)
+    client.connect_async(ppi.MQTT_HOSTNAME, ppi.MQTT_PORT, 60)
+    client.loop_start()
+
+    import atexit
+    atexit.register(client.loop_stop)
 
 def read_status(clear_fault=False):
-        global disconnectflag, ENABLE_UDP
+        global disconnectflag, ENABLE_UDP, reportRound
         err, status = ppi.read_status(clear_fault)
-        
+
         if err:
             time.sleep(1)
             return
+
+        reportRound += 1
 
         if status["PowerInputStatus"] == "Not Connected" and disconnectflag == False :
             disconnectflag = True
@@ -77,15 +89,16 @@ def read_status(clear_fault=False):
                 logging.error(ex)
 
         if client != None:
-            try:
-                client.publish(ppi.MQTT_BASETOPIC + "/status", payload=json.dumps(status,indent=4,sort_keys=True), qos=0, retain=False)
-                for key, value in status.items():
-                    client.publish(ppi.MQTT_BASETOPIC + "/status/" + key, payload=value, qos=0, retain=False)
-            except Exception as ex:
-                logging.error(ex)
-        
+            if (reportRound % ppi.MQTT_INTERVAL == 0):
+                try:
+                    client.publish(ppi.MQTT_BASETOPIC + "/status", payload=json.dumps(status,indent=4,sort_keys=True), qos=0, retain=False)
+                    for key, value in status.items():
+                        client.publish(ppi.MQTT_BASETOPIC + "/status/" + key, payload=value, qos=0, retain=False)
+                except Exception as ex:
+                    logging.error(ex)
+
         logging.debug(status)
-        
+
         if(status['BatteryVoltage'] < ppi.VBAT_LOW):
                 ppi.bat_disconnect()
                 os.system('sudo shutdown now')

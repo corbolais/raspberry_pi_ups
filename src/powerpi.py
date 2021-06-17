@@ -40,6 +40,7 @@ class Powerpi:
     MQTT_PASSWORD = "mqttPassword"
     MQTT_CLIENTID = "powerpi"
     MQTT_BASETOPIC = "powerpi"
+    MQTT_INTERVAL = 1
     ###############################################
     """    
     BAT_CAPACITY, CURRENT_DRAW and VBAT_MAX are used to estimated the state of charge 
